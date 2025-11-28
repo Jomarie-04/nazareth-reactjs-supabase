@@ -6,9 +6,8 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export interface Task {
-  id: string;
+  id: number;
   title: string;
   description: string;
   created_at: string;
-  updated_at: string;
 }

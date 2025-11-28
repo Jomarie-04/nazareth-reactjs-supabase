@@ -1,12 +1,11 @@
 import { useEffect, useState } from 'react';
 import { supabase, Task } from './lib/supabase';
 
-function App() {
+export default function App() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [newTitle, setNewTitle] = useState('');
   const [newDescription, setNewDescription] = useState('');
   const [editingTask, setEditingTask] = useState<Task | null>(null);
-  const [editDescription, setEditDescription] = useState('');
 
   useEffect(() => {
     fetchTasks();
@@ -14,145 +13,125 @@ function App() {
 
   const fetchTasks = async () => {
     const { data, error } = await supabase
-      .from('tasks')
+      .from('webtask')
       .select('*')
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: true });
 
     if (error) {
-      console.error('Error fetching tasks:', error);
-    } else {
-      setTasks(data || []);
+      console.error('Error fetch task', error.message);
+      return;
     }
+
+    console.log('Succesful fetch');
+    setTasks(data || []);
   };
 
-  const addTask = async () => {
+  const submitTask = async (e: React.FormEvent) => {
+    e.preventDefault();
+
     if (!newTitle.trim()) return;
 
     const { error } = await supabase
-      .from('tasks')
+      .from('webtask')
       .insert([{ title: newTitle, description: newDescription }]);
 
     if (error) {
-      console.error('Error adding task:', error);
-    } else {
-      setNewTitle('');
-      setNewDescription('');
-      fetchTasks();
+      console.error('Error insert task', error.message);
+      return;
     }
+
+    console.log('Succesful insert');
+    setNewTitle('');
+    setNewDescription('');
+    fetchTasks();
   };
 
-  const updateTask = async () => {
-    if (!editingTask) return;
-
+  const updateTask = async (id: number) => {
     const { error } = await supabase
-      .from('tasks')
-      .update({
-        description: editDescription,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', editingTask.id);
+      .from('webtask')
+      .update({ description: newDescription })
+      .eq('id', id);
 
     if (error) {
-      console.error('Error updating task:', error);
-    } else {
-      setEditingTask(null);
-      setEditDescription('');
-      fetchTasks();
+      console.error('Error update task', error.message);
+      return;
     }
+
+    console.log('Succesful update');
+    setNewDescription('');
+    setEditingTask(null);
+    fetchTasks();
   };
 
-  const deleteTask = async (id: string) => {
+  const deleteTask = async (id: number) => {
     const { error } = await supabase
-      .from('tasks')
+      .from('webtask')
       .delete()
       .eq('id', id);
 
     if (error) {
-      console.error('Error deleting task:', error);
-    } else {
-      setEditingTask(null);
-      fetchTasks();
+      console.error('Error delete task', error.message);
+      return;
     }
+
+    console.log('Succesful delete');
+    setEditingTask(null);
+    fetchTasks();
   };
 
-  const selectTask = (task: Task) => {
+  const startEditing = (task: Task) => {
     setEditingTask(task);
-    setEditDescription(task.description);
+    setNewDescription(task.description);
   };
 
   return (
-    <div className="min-h-screen bg-neutral-800 text-white flex flex-col items-center py-16 px-4">
-      <h1 className="text-5xl font-bold mb-12">Supabase x React js</h1>
+    <>
+      <h1>Supabase x React js</h1>
 
-      <div className="w-full max-w-2xl mb-12 flex gap-4">
+      <form onSubmit={submitTask}>
         <input
           type="text"
           placeholder="Title Here"
+          required
           value={newTitle}
           onChange={(e) => setNewTitle(e.target.value)}
-          className="px-4 py-2 bg-transparent border border-neutral-600 focus:outline-none focus:border-neutral-400 flex-shrink-0 w-48"
         />
-        <input
-          type="text"
+        <textarea
           placeholder="Description Here"
+          required
           value={newDescription}
           onChange={(e) => setNewDescription(e.target.value)}
-          className="px-4 py-2 bg-transparent border border-neutral-600 focus:outline-none focus:border-neutral-400 flex-1"
         />
-        <button
-          onClick={addTask}
-          className="px-8 py-2 bg-white text-neutral-900 font-semibold hover:bg-neutral-200 transition-colors"
-        >
-          Add Task
-        </button>
-      </div>
+        <button type="submit">Add Task</button>
+      </form>
 
-      <div className="w-full max-w-2xl space-y-8">
+      <ul>
         {tasks.map((task) => (
-          <div key={task.id} className="border-l-4 border-white pl-8">
-            <h2 className="text-3xl font-bold mb-4">{task.title}</h2>
-            <p className="text-lg mb-6 text-neutral-300">Description</p>
+          <li key={task.id}>
+            <div>
+              <h3>{task.title}</h3>
+              <p>{task.description}</p>
 
-            {editingTask?.id === task.id ? (
-              <textarea
-                value={editDescription}
-                onChange={(e) => setEditDescription(e.target.value)}
-                placeholder="Edit description"
-                className="w-full px-4 py-3 bg-transparent border border-neutral-600 focus:outline-none focus:border-neutral-400 mb-4 resize-none"
-                rows={3}
-              />
-            ) : (
-              <p className="text-neutral-400 mb-6">{task.description}</p>
-            )}
-
-            <div className="flex gap-4">
               {editingTask?.id === task.id ? (
-                <button
-                  onClick={updateTask}
-                  className="px-6 py-2 bg-white text-neutral-900 font-semibold hover:bg-neutral-200 transition-colors"
-                >
-                  Update Task
-                </button>
+                <>
+                  <textarea
+                    placeholder="Edit description"
+                    value={newDescription}
+                    onChange={(e) => setNewDescription(e.target.value)}
+                  />
+                  <button onClick={() => updateTask(task.id)}>Update Task</button>
+                </>
               ) : (
-                <button
-                  onClick={() => selectTask(task)}
-                  className="px-6 py-2 bg-white text-neutral-900 font-semibold hover:bg-neutral-200 transition-colors"
-                >
-                  Update Task
-                </button>
+                <>
+                  <button onClick={() => startEditing(task)}>Update Task</button>
+                </>
               )}
-              <button
-                onClick={() => deleteTask(task.id)}
-                className="px-6 py-2 bg-white text-neutral-900 font-semibold hover:bg-neutral-200 transition-colors"
-              >
-                Delete Task
-              </button>
+
+              <button onClick={() => deleteTask(task.id)}>Delete Task</button>
             </div>
-          </div>
+          </li>
         ))}
-      </div>
-    </div>
+      </ul>
+    </>
   );
 }
-
-export default App;
